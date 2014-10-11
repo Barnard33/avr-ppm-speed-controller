@@ -48,7 +48,8 @@ volatile uint8_t ppm_signal_received = 0;
 volatile uint8_t full_speed_ahead = 0;
 volatile uint8_t full_stop = 0;
 volatile uint8_t full_speed_astern = 0;
-volatile uint8_t scaling_factor = 0;
+volatile uint8_t scaling_factor_ahead = 0;
+volatile uint8_t scaling_factor_astern = 0;
 
 /* global variables (for setup procedure) */
 volatile uint8_t setup_trigger = 0;
@@ -103,12 +104,12 @@ inline uint8_t is_oc1b_connected(void) {
 	return DDRB & (1 << PB4);
 }
 
-inline uint8_t calculate_ocr1_value(uint8_t signal) {
+inline uint8_t calculate_ocr1_value(uint8_t signal, uint8_t scaling_factor) {
 	int8_t len = (int8_t)signal - (int8_t)full_stop;
 	if(len < 0) {
-		len = len * (-1);
+		len = len * ((int8_t)-1);
 	}
-	return len * scaling_factor;
+	return ((uint8_t)len) * scaling_factor;
 }
 
 inline void init_interrupts(void) {
@@ -150,8 +151,8 @@ void write_config_to_eeprom() {
 	eeprom_write_byte(&eeprom_full_stop, full_stop);
 }
 
-void calculate_scaling_factor(void) {
-	scaling_factor = (255 / (full_speed_ahead - full_stop));
+inline uint8_t calculate_scaling_factor(uint8_t a, uint8_t b) {
+	return (255 / (a - b));
 }
 
 void setup(void) {
@@ -221,7 +222,8 @@ int main(void)
 {
 	disbale_watchdog(); // setup requires watchdog to cause a real reset
 	read_config_from_eeprom();
-	calculate_scaling_factor();
+	scaling_factor_ahead = calculate_scaling_factor(full_speed_ahead, full_stop);
+	scaling_factor_astern = calculate_scaling_factor(full_stop, full_speed_astern);
 	
 	/* in pin init PD2/INT0=ppm in; PD3/INT1=setup button */
 	DDRD &= ~((1 << PD2) & (1 << PD3));
@@ -233,15 +235,15 @@ int main(void)
 	init_timer0_prescaler_256();
 	init_interrupts();
 	
-	if(!is_brownout_reset()) {
+	//if(!is_brownout_reset()) {
 		if(!(PIND & (1 << PD3))) {
 			setup();
 			return -1;
 		}
-	}
-	else {
+	//}
+	//else {
 		reset_brownout_reset_flag();
-	}
+	//}
 	
 	OCR1A = 0;
 	OCR1B = 0;
@@ -275,6 +277,8 @@ int main(void)
 
 /* servo input pin on INT0 */
 ISR(INT0_vect) {
+	static uint16_t last_val = 0;
+	
 	if((MCUCR & (1<<ISC00)) > 0) {
 		TCNT0 = 0;
 		MCUCR &= ~(1 << ISC00);
@@ -302,18 +306,21 @@ ISR(INT0_vect) {
 				disconnect_oc1b();
 				connect_oc1a();
 			}
-			OCR1A = calculate_ocr1_value(pulse_length);
+			last_val = (last_val + calculate_ocr1_value(pulse_length, scaling_factor_ahead)) / 2;
+			OCR1A = last_val;
 		}
 		else if(pulse_length < full_stop - 1) {
 			if(!is_oc1b_connected()) {
 				disconnect_oc1a();
 				connect_oc1b();
 			}
-			OCR1B = calculate_ocr1_value(pulse_length);
+			last_val = ((last_val + calculate_ocr1_value(pulse_length, scaling_factor_astern)) / 2);
+			OCR1B = last_val;
 		}
 		else {
 			disconnect_oc1a();
 			disconnect_oc1b();
+			last_val = 0;
 		}
 	}
 }
