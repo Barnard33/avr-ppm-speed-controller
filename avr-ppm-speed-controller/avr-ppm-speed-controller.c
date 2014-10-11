@@ -71,7 +71,7 @@ inline void init_timer1_pwm(void) {
 	TCCR1A |= (1 << COM1A1) | (1 << COM1B1);
 	
 	/* phase correct PWM, 8-bit */
-	TCCR1A |= (1 << WGM10) || (1 << WGM11);
+	TCCR1A |= (1 << WGM10);
 	
 	/* set clock to clkIO/8 */
 	TCCR1B |= (1 << CS11);
