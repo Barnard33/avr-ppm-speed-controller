@@ -71,7 +71,8 @@ inline void init_timer1_pwm(void) {
 	TCCR1A |= (1 << COM1A1) | (1 << COM1B1);
 	
 	/* fast PWM, 8-bit */
-	TCCR1A |= (1 << WGM12) | (1 << WGM10);
+	TCCR1A |= (1 << WGM10);
+	TCCR1B |= (1 << WGM12);
 	
 	/* set clock to clkIO/8 */
 	TCCR1B |= (1 << CS11);
