@@ -104,12 +104,12 @@ inline uint8_t is_oc1b_connected(void) {
 	return DDRB & (1 << PB4);
 }
 
-inline uint8_t calculate_ocr1_value(uint8_t signal, uint8_t scaling_factor) {
+inline uint8_t calculate_ocr1_value(uint16_t timer_compare, uint8_t signal, uint8_t scaling_factor) {
 	int8_t len = (int8_t)signal - (int8_t)full_stop;
 	if(len < 0) {
-		len = len * ((int8_t)-1);
+		len = len * -1;
 	}
-	return ((uint8_t)len) * scaling_factor;
+	return (timer_compare + ((uint8_t)len) * scaling_factor) / 2;
 }
 
 inline void init_interrupts(void) {
@@ -277,8 +277,6 @@ int main(void)
 
 /* servo input pin on INT0 */
 ISR(INT0_vect) {
-	static uint16_t last_val = 0;
-	
 	if((MCUCR & (1<<ISC00)) > 0) {
 		TCNT0 = 0;
 		MCUCR &= ~(1 << ISC00);
@@ -306,21 +304,18 @@ ISR(INT0_vect) {
 				disconnect_oc1b();
 				connect_oc1a();
 			}
-			last_val = (last_val + calculate_ocr1_value(pulse_length, scaling_factor_ahead)) / 2;
-			OCR1A = last_val;
+			OCR1A = calculate_ocr1_value(OCR1A, pulse_length, scaling_factor_ahead);
 		}
 		else if(pulse_length < full_stop - 1) {
 			if(!is_oc1b_connected()) {
 				disconnect_oc1a();
 				connect_oc1b();
 			}
-			last_val = ((last_val + calculate_ocr1_value(pulse_length, scaling_factor_astern)) / 2);
-			OCR1B = last_val;
+			OCR1B = calculate_ocr1_value(OCR1B, pulse_length, scaling_factor_astern);
 		}
 		else {
 			disconnect_oc1a();
 			disconnect_oc1b();
-			last_val = 0;
 		}
 	}
 }
