@@ -104,7 +104,7 @@ inline uint8_t is_oc1b_connected(void) {
 	return DDRB & (1 << PB4);
 }
 
-inline uint8_t calculate_ocr1_value(uint16_t timer_compare, uint8_t signal, uint8_t scaling_factor) {
+inline uint16_t calculate_ocr1_value(uint16_t timer_compare, uint8_t signal, uint8_t scaling_factor) {
 	int8_t len = (int8_t)signal - (int8_t)full_stop;
 	if(len < 0) {
 		len = len * -1;
