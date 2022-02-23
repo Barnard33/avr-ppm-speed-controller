@@ -30,3 +30,6 @@
 
 #Atmel Studio Debug folder
 Debug
+
+#Visual Studio Code C and CPP plugin config file
+.vscode
