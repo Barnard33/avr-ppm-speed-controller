@@ -56,7 +56,7 @@ volatile uint8_t setup_trigger = 0;
 volatile uint8_t setup_mode = 0;
 volatile uint8_t setup_pulse_length = 0;
 
-inline void software_reset(void) {
+static inline void software_reset(void) {
 	wdt_enable(8);
 	while(1);
 }
@@ -145,7 +145,7 @@ void read_config_from_eeprom(void) {
 	full_stop = eeprom_read_byte(&eeprom_full_stop);
 }
 
-void write_config_to_eeprom() {
+void write_config_to_eeprom(void) {
 	eeprom_write_byte(&eeprom_full_speed_ahead, full_speed_ahead);
 	eeprom_write_byte(&eeprom_full_speed_astern, full_speed_astern);
 	eeprom_write_byte(&eeprom_full_stop, full_stop);
